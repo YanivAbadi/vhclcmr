@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>בדיקת תאריך טסט אחרון ומודל רכב</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+            text-align: right;
+        }
+        .container {
+            background-color: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            margin-bottom: 20px;
+        }
+        .form-group {
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        .input-wrapper {
+            display: flex;
+            width: 100%;
+        }
+        input {
+            width: 50%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px 0 0 4px;
+            font-size: 16px;
+            border-right: none;
+        }
+        .camera-button {
+            width: 50px;
+            background-color: #f8f9fa;
+            border: 1px solid #ddd;
+            border-radius: 0 4px 4px 0;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .camera-button:hover {
+            background-color: #e9ecef;
+        }
+        .camera-icon {
+            width: 24px;
+            height: 24px;
+        }
+        button {
+            background-color: #4285f4;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            margin-right: 5px;
+        }
+        button:hover {
+            background-color: #3367d6;
+        }
+        #result {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 4px;
+            display: none;
+        }
+        .success {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .error {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(0,0,0,0.1);
+            border-radius: 50%;
+            border-top-color: #3498db;
+            animation: spin 1s ease-in-out infinite;
+            margin-right: 10px;
+            vertical-align: middle;
+            display: none;
+        }
+        .vehicle-details {
+            margin-top: 10px;
+        }
+        .detail-row {
+            margin-bottom: 5px;
+        }
+        .detail-label {
+            font-weight: bold;
+            display: inline-block;
+            margin-left: 5px;
+        }
+        .reminder-btn {
+            background-color: #25D366; /* צבע וואטסאפ */
+            margin-top: 15px;
+        }
+        .reminder-btn:hover {
+            background-color: #128C7E;
+        }
+        .buttons-container {
+            margin-top: 15px;
+        }
+        #fileInput {
+            display: none;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>בדיקת פרטי רכב ותאריך טסט</h1>
+        <div class="form-group">
+            <label for="vehicleNumber">מספר רכב:</label>
+            <div class="input-wrapper">
+                <input type="text" id="vehicleNumber" placeholder="הזן מספר רכב" maxlength="8">
+                <div class="camera-button" onclick="activateCamera()">
+                    <svg class="camera-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
+                        <circle cx="12" cy="13" r="4"></circle>
+                    </svg>
+                </div>
+                <input type="file" id="fileInput" accept="image/*" capture="environment" onchange="handleCameraImage(event)">
+            </div>
+        </div>
+        <button id="searchButton" onclick="searchVehicle()">
+            <span id="loadingIndicator" class="loading"></span>
+            חפש רכב
+        </button>
+        <div id="result"></div>
+
+        <!-- Hidden video element for camera preview -->
+        <div id="cameraContainer" style="display: none; margin-top: 15px;">
+            <video id="cameraPreview" style="width: 100%; border-radius: 4px;" autoplay></video>
+        </div>
+    </div>
+
+    <script>
+        // משתנה גלובלי לשמירת נתוני הרכב שנמצא
+        let foundVehicle = null;
+        
+        function formatDate(dateString) {
+            if (!dateString) return "לא נמצא תאריך";
+            
+            const date = new Date(dateString);
+            return date.toLocaleDateString('he-IL', {
+                day: '2-digit',
+                month: '2-digit',
+                year: 'numeric'
+            });
+        }
+
+        function showLoading(isLoading) {
+            const loadingIndicator = document.getElementById('loadingIndicator');
+            const searchButton = document.getElementById('searchButton');
+            
+            if (isLoading) {
+                loadingIndicator.style.display = 'inline-block';
+                searchButton.disabled = true;
+            } else {
+                loadingIndicator.style.display = 'none';
+                searchButton.disabled = false;
+            }
+        }
+
+        function activateCamera() {
+            document.getElementById('fileInput').click();
+        }
+
+        function handleCameraImage(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            // כאן יכול להיות קוד לזיהוי מספר רכב מתמונה
+            // במקום זאת, נציג הודעה למשתמש
+            alert("פתיחת המצלמה הצליחה! בגרסה זו, עליך להזין את מספר הרכב ידנית.");
+            
+            // ניתן להוסיף כאן בעתיד קוד לעיבוד התמונה וזיהוי הטקסט
+            // כדוגמה פשוטה, נציג את התמונה שנלקחה
+            showCapturedImage(file);
+        }
+
+        function showCapturedImage(file) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                // ניתן להשתמש ב-e.target.result כדי להציג את התמונה
+                // כרגע פשוט נשאיר את החלק הזה לא ממומש במלואו
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function createReminderLink(vehicle) {
+            const testDate = formatDate(vehicle.mivchan_acharon_dt);
+            const vehicleModel = vehicle.tozeret_nm || "רכב";
+            const vehicleNumber = vehicle.mispar_rechev;
+            
+            // יצירת הטקסט להודעת וואטסאפ
+            const message = `אשמח לקבל תזכורת חודש לפני הטסט עבור רכב מספר ${vehicleNumber}, מסוג ${vehicleModel}, שהטסט האחרון שלו היה בתאריך ${testDate}`;
+            
+            // קידוד הטקסט ל-URL
+            const encodedMessage = encodeURIComponent(message);
+            
+            return `https://wa.me/0546250917?text=${encodedMessage}`;
+        }
+
+        function showResult(message, isSuccess, vehicleData = null) {
+            const resultElement = document.getElementById('result');
+            resultElement.style.display = 'block';
+            
+            if (isSuccess) {
+                resultElement.className = 'success';
+                foundVehicle = vehicleData;
+                
+                // בניית הפלט עם פרטי הרכב
+                let resultHTML = `<div class="vehicle-details">`;
+                
+                // הוספת מספר רכב
+                resultHTML += `<div class="detail-row"><span class="detail-label">מספר רכב:</span> ${vehicleData.mispar_rechev}</div>`;
+                
+                // הוספת מודל רכב אם קיים
+                if (vehicleData.tozeret_nm) {
+                    resultHTML += `<div class="detail-row"><span class="detail-label">מודל רכב:</span> ${vehicleData.tozeret_nm}</div>`;
+                }
+                
+                // הוספת תאריך טסט אחרון
+                const testDate = formatDate(vehicleData.mivchan_acharon_dt);
+                resultHTML += `<div class="detail-row"><span class="detail-label">תאריך טסט אחרון:</span> ${testDate}</div>`;
+                
+                // הוספת כפתור תזכורת
+                resultHTML += `<div class="buttons-container">
+                    <button class="reminder-btn" onclick="openReminderLink()">אני רוצה תזכורת</button>
+                </div>`;
+                
+                resultHTML += `</div>`;
+                resultElement.innerHTML = resultHTML;
+            } else {
+                resultElement.className = 'error';
+                resultElement.textContent = message;
+                foundVehicle = null;
+            }
+        }
+
+        function openReminderLink() {
+            if (foundVehicle) {
+                const reminderLink = createReminderLink(foundVehicle);
+                window.open(reminderLink, '_blank');
+            }
+        }
+
+        function searchVehicle() {
+            const vehicleNumberInput = document.getElementById('vehicleNumber');
+            const vehicleNumber = vehicleNumberInput.value.trim();
+            
+            if (!vehicleNumber) {
+                showResult('אנא הזן מספר רכב', false);
+                return;
+            }
+            
+            showLoading(true);
+            const resultElement = document.getElementById('result');
+            resultElement.style.display = 'none';
+            
+            const apiUrl = `https://data.gov.il/api/3/action/datastore_search?resource_id=053cea08-09bc-40ec-8f7a-156f0677aff3&q=${vehicleNumber}`;
+            
+            fetch(apiUrl)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('תקלה בתקשורת עם השרת');
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    showLoading(false);
+                    
+                    // ניקוי שדה הקלדה
+                    vehicleNumberInput.value = '';
+                    
+                    if (data.success && data.result && data.result.records && data.result.records.length > 0) {
+                        // חיפוש הרכב הספציפי בתוצאות
+                        const vehicle = data.result.records.find(record => 
+                            record.mispar_rechev && record.mispar_rechev.toString() === vehicleNumber);
+                        
+                        if (vehicle) {
+                            showResult('', true, vehicle);
+                        } else {
+                            showResult(`רכב מספר ${vehicleNumber} לא נמצא במאגר`, false);
+                        }
+                    } else {
+                        showResult(`רכב מספר ${vehicleNumber} לא נמצא במאגר`, false);
+                    }
+                })
+                .catch(error => {
+                    showLoading(false);
+                    vehicleNumberInput.value = '';
+                    showResult(`שגיאה בחיפוש: ${error.message}`, false);
+                    console.error('Error:', error);
+                });
+        }
+
+        // הוספת אפשרות לחיפוש בלחיצה על Enter
+        document.getElementById('vehicleNumber').addEventListener('keypress', function(event) {
+            if (event.key === 'Enter') {
+                searchVehicle();
+            }
+        });
+    </script>
+</body>
+</html>
