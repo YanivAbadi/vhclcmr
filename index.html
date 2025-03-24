@@ -41,7 +41,7 @@
             padding: 8px;
             border: 1px solid #ddd;
             border-radius: 4px 0 0 4px;
-            font-size: 16px;
+            font-size: 19.2px; /* גדול ב-20% מהמקור (16px * 1.2 = 19.2px) */
             border-right: none;
         }
         .camera-button {
@@ -126,6 +126,14 @@
         #fileInput {
             display: none;
         }
+        .footer-note {
+            margin-top: 20px;
+            font-weight: bold;
+            text-align: center;
+            padding: 10px;
+            background-color: #f8f9fa;
+            border-radius: 4px;
+        }
         @keyframes spin {
             to { transform: rotate(360deg); }
         }
@@ -157,6 +165,11 @@
         <div id="cameraContainer" style="display: none; margin-top: 15px;">
             <video id="cameraPreview" style="width: 100%; border-radius: 4px;" autoplay></video>
         </div>
+    </div>
+
+    <!-- הוספת הערה בתחתית העמוד -->
+    <div class="footer-note">
+        המערכת פותחה ע"י יניב עבדי ומעודכנת במידע של משרד התחבורה אשר פורסם בשעה 9:00 בבוקר
     </div>
 
     <script>
@@ -215,11 +228,12 @@
 
         function createReminderLink(vehicle) {
             const testDate = formatDate(vehicle.mivchan_acharon_dt);
+            const licenseExpiry = formatDate(vehicle.tokef_dt);
             const vehicleModel = vehicle.tozeret_nm || "רכב";
             const vehicleNumber = vehicle.mispar_rechev;
             
             // יצירת הטקסט להודעת וואטסאפ
-            const message = `אשמח לקבל תזכורת חודש לפני הטסט עבור רכב מספר ${vehicleNumber}, מסוג ${vehicleModel}, שהטסט האחרון שלו היה בתאריך ${testDate}`;
+            const message = `אשמח לקבל תזכורת חודש לפני הטסט עבור רכב מספר ${vehicleNumber}, מסוג ${vehicleModel}, שהטסט האחרון שלו היה בתאריך ${testDate} ותוקף הרישיון הוא ${licenseExpiry}`;
             
             // קידוד הטקסט ל-URL
             const encodedMessage = encodeURIComponent(message);
@@ -249,6 +263,10 @@
                 // הוספת תאריך טסט אחרון
                 const testDate = formatDate(vehicleData.mivchan_acharon_dt);
                 resultHTML += `<div class="detail-row"><span class="detail-label">תאריך טסט אחרון:</span> ${testDate}</div>`;
+                
+                // הוספת תאריך תוקף רישיון
+                const licenseExpiry = formatDate(vehicleData.tokef_dt);
+                resultHTML += `<div class="detail-row"><span class="detail-label">תוקף רישיון:</span> ${licenseExpiry}</div>`;
                 
                 // הוספת כפתור תזכורת
                 resultHTML += `<div class="buttons-container">
